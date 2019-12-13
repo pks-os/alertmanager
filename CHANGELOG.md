@@ -1,4 +1,125 @@
-## 0.16.0-alpha.0 / 2018-11-30
+## 0.20.0 / 2019-12-11
+
+* [CHANGE] Check that at least one silence matcher matches a non-empty string. #2081
+* [ENHANCEMENT] [pagerduty] Check that PagerDuty keys aren't empty. #2085
+* [ENHANCEMENT] [template] Add the `stringSlice` function. #2101
+* [ENHANCEMENT] Add `alertmanager_dispatcher_aggregation_groups` and `alertmanager_dispatcher_alert_processing_duration_seconds` metrics. #2113
+* [ENHANCEMENT] Log unused receivers. #2114
+* [ENHANCEMENT] Add `alertmanager_receivers` metric. #2114
+* [ENHANCEMENT] Add `alertmanager_integrations` metric. #2117
+* [ENHANCEMENT] [email] Add Message-Id Header to outgoing emails. #2057
+* [BUGFIX] Don't garbage-collect alerts from the store. #2040
+* [BUGFIX] [ui] Disable the grammarly plugin on all textareas. #2061
+* [BUGFIX] [config] Forbid nil regexp matchers. #2083
+* [BUGFIX] [ui] Fix Silences UI when several filters are applied. #2075
+
+Contributors:
+
+* @CharlesJUDITH
+* @NotAFile
+* @Pger-Y
+* @TheMeier
+* @johncming
+* @n33pm
+* @ntk148v
+* @oddlittlebird
+* @perlun
+* @qoops-1
+* @roidelapluie
+* @simonpasquier
+* @stephenreddek
+* @sylr
+* @vrischmann
+
+## 0.19.0 / 2019-09-03
+
+* [CHANGE] Reject invalid external URLs at startup. #1960
+* [CHANGE] Add Fingerprint to template data. #1945
+* [CHANGE] Check Smarthost validity at config loading. #1957
+* [ENHANCEMENT] Improve error messages for email receiver. #1953
+* [ENHANCEMENT] Log error messages from OpsGenie API. #1965
+* [ENHANCEMENT] Add the ability to configure Slack markdown field. #1967
+* [ENHANCEMENT] Log warning when repeat_interval > retention. #1993
+* [ENHANCEMENT] Add `alertmanager_cluster_enabled` metric. #1973
+* [ENHANCEMENT] [ui] Recreate silence with previous comment. #1927
+* [BUGFIX] [ui] Fix /api/v2/alerts/groups endpoint with similar alert groups. #1964
+* [BUGFIX] Allow slashes in receivers. #2011
+* [BUGFIX] [ui] Fix expand/collapse button with identical alert groups. #2012
+
+## 0.18.0 / 2019-07-08
+
+* [CHANGE] Remove quantile labels from Summary metrics. #1921
+* [CHANGE] [OpsGenie] Move from the deprecated `teams` field in the configuration to `responders`. #1863
+* [CHANGE] [ui] Collapse alert groups on the initial view. #1876
+* [CHANGE] [Wechat] Set the default API secret to blank. #1888
+* [CHANGE/BUGFIX] [PagerDuty] Fix embedding of images, the `text` field in the configuration has been renamed to `href`. #1931
+* [ENHANCEMENT] Use persistent HTTP clients. #1904
+* [ENHANCEMENT] Add `alertmanager_cluster_alive_messages_total`, `alertmanager_cluster_peer_info` and `alertmanager_cluster_pings_seconds` metrics. #1941
+* [ENHANCEMENT] [api] Add missing metrics for API v2. #1902
+* [ENHANCEMENT] [Slack] Log error message on retry errors. #1655
+* [ENHANCEMENT] [ui] Allow to create silences from the alerts filter bar. #1911
+* [ENHANCEMENT] [ui] Enable auto resize the textarea fields. #1893
+* [BUGFIX] [amtool] Use scheme, authentication and base path from the URL if present. #1892 #1940
+* [BUGFIX] [amtool] Support filtering alerts by receiver. #1915
+* [BUGFIX] [api] Fix /api/v2/alerts with multiple receivers. #1948
+* [BUGFIX] [PagerDuty] Truncate description to 1024 chars for PagerDuty v1. #1922
+* [BUGFIX] [ui] Add filtering based off of "active" query param. #1879
+
+
+## 0.17.0 / 2019-05-02
+
+This release includes changes to amtool which are not fully backwards
+compatible with the previous amtool version (#1798) related to backup and
+import of silences. If a backup of silences is created using a previous
+version of amtool (v0.16.1 or earlier), it is possible that not all silences
+can be correctly imported using a later version of amtool.
+
+Additionally, the groups endpoint that was dropped from api v1 has been added
+to api v2. The default for viewing alerts in the UI now consumes from this
+endpoint and displays alerts grouped according to the groups defined in the
+running configuration. Custom grouping is still supported.
+
+This release has added two new flags that may need to be tweaked. For people
+running with a lot of concurrent requests, consider increasing the value of
+`--web.get-concurrency`. An increase in 503 errors indicates that the request
+rate is exceeding the number of currently available workers. The other new
+flag, --web.timeout, limits the time a request is allowed to run. The default
+behavior is to not use a timeout.
+
+* [CHANGE] Modify the self-inhibition prevention semantics (#1873)
+* [CHANGE] Make api/v2/status.cluster.{name,peers} properties optional for Alertmanager with disabled clustering (#1728)
+* [FEATURE] Add groups endpoint to v2 api (#1791)
+* [FEATURE] Optional timeout for HTTP requests (#1743)
+* [ENHANCEMENT] Set HTTP headers to prevent asset caching (#1817)
+* [ENHANCEMENT] API returns current silenced/inhibited state of alerts (#1733)
+* [ENHANCEMENT] Configurable concurrency limit for GET requests (#1743)
+* [ENHANCEMENT] Pushover notifier: support HTML, URL title and custom sounds (#1634)
+* [ENHANCEMENT] Support adding custom fields to VictorOps notifications (#1420)
+* [ENHANCEMENT] Migrate amtool CLI to API v2 (#1798)
+* [ENHANCEMENT][ui] Default alert list view grouped by configured alert groups (#1864)
+* [ENHANCEMENT][ui] Remove superfluous inhibited/silenced text, show inhibited status (#1698, #1862)
+* [ENHANCEMENT][ui] Silence preview now shows already-muted alerts (#1776)
+* [ENHANCEMENT][ui] Sort silences from api/v2 similarly to api/v1 (#1786)
+* [BUGFIX] Trim PagerDuty message summary to 1024 chars (#1701)
+* [BUGFIX] Add fix for race causing alerts to be dropped (#1843)
+* [BUGFIX][ui] Correctly construct filter query string for api (#1869)
+* [BUGFIX][ui] Do not display GroupByAll and GroupBy in marshaled config (#1665)
+* [BUGFIX][ui] Respect regex setting when creating silences (#1697)
+
+## 0.16.2 / 2019-04-03
+
+Updating to v0.16.2 is recommended for all users using the Slack, Pagerduty,
+Hipchat, Wechat, VictorOps and Pushover notifier, as connection errors could
+leak secrets embedded in the notifier's URL to stdout.
+
+* [BUGFIX] Redact notifier URL from logs to not leak secrets embedded in the URL (#1822, #1825)
+* [BUGFIX] Allow sending of unauthenticated SMTP requests when `smtp_auth_username` is not supplied (#1739)
+
+## 0.16.1 / 2019-01-31
+
+* [BUGFIX] Do not populate cluster info if clustering is disabled in API v2 (#1726)
+
+## 0.16.0 / 2019-01-17
 
 This release introduces a new API v2, fully generated via the OpenAPI project
 [1]. At the same time with this release the previous API v1 is being
@@ -18,14 +139,24 @@ deprecated. API v1 will be removed with Alertmanager release v0.18.0.
 * [FEATURE] Add support for images and links in the PagerDuty notification config (#1559)
 * [FEATURE] Add support for grouping by all labels (#1588)
 * [FEATURE] [amtool] Add timeout support to amtool commands (#1471)
-* [FEATURE] [amtool] Added `config routes` tools for vizualization and testing routes (#1511)
+* [FEATURE] [amtool] Added `config routes` tools for visualization and testing routes (#1511)
 * [FEATURE] [amtool] Support adding alerts using amtool (#1461)
+* [ENHANCEMENT] Add support for --log.format (#1658)
+* [ENHANCEMENT] Add CORS support to API v2 (#1667)
+* [ENHANCEMENT] Support HTML, URL title and custom sounds for Pushover (#1634)
+* [ENHANCEMENT] Update Alert compact view (#1698)
+* [ENHANCEMENT] Support adding custom fields to VictorOps notifications (#1420)
 * [ENHANCEMENT] Add help link in UI to Alertmanager documentation (#1522)
 * [ENHANCEMENT] Enforce HTTP or HTTPS URLs in Alertmanager config (#1567)
 * [ENHANCEMENT] Make OpsGenie API Key a templated string (#1594)
 * [ENHANCEMENT] Add name, value and SlackConfirmationField to action in Slack notifier (#1557)
 * [ENHANCEMENT] Show more alert information on silence form and silence view pages (#1601)
 * [ENHANCEMENT] Add cluster peers DNS refresh job (#1428)
+* [BUGFIX] Fix unmarshalling of secret URLs in config (#1663)
+* [BUGFIX] Do not write groupbyall and groupby when marshaling config (#1665)
+* [BUGFIX] Make a copy of firing alerts with EndsAt=0 when flushing (#1686)
+* [BUGFIX] Respect regex matchers when recreating silences in UI (#1697)
+* [BUGFIX] Change DefaultGlobalConfig to a function in Alertmanager configuration (#1656)
 * [BUGFIX] Fix email template typo in alert-warning style (#1421)
 * [BUGFIX] Fix silence redirect on silence creation UI page (#1548)
 * [BUGFIX] Add missing `callback_id` parameter in Slack notifier (#1592)
@@ -33,6 +164,7 @@ deprecated. API v1 will be removed with Alertmanager release v0.18.0.
 * [BUGFIX] Use quoted-printable transfer encoding for the email notifier (#1609)
 * [BUGFIX] Do not merge expired gossip messages (#1631)
 * [BUGFIX] Fix "PLAIN" auth during notification via smtp-over-tls on port 465 (#1591)
+* [BUGFIX] [amtool] Support for assuming first label is alertname in silence add and query (#1693)
 * [BUGFIX] [amtool] Support assuming first label is alertname in alert query with matchers (#1575)
 * [BUGFIX] [amtool] Fix config path check in amtool (#1538)
 * [BUGFIX] [amtool] Fix rfc3339 example texts (#1526)
@@ -330,7 +462,7 @@ This release uses a new storage backend based on BoltDB. You have to backup
 and wipe your former storage path to run it.
 
 * [CHANGE] Use BoltDB as data store.
-* [CHANGE] Move SMTP authentification to configuration file
+* [CHANGE] Move SMTP authentication to configuration file
 * [FEATURE] add /-/reload HTTP endpoint
 * [FEATURE] Filter silenced alerts in web UI
 * [ENHANCEMENT] reduce inhibition computation complexity

@@ -15,6 +15,7 @@
 package client
 
 import (
+	"context"
 	"crypto"
 	"crypto/ecdsa"
 	"crypto/rsa"
@@ -29,9 +30,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-
-	"golang.org/x/net/context"
-	"golang.org/x/net/context/ctxhttp"
 
 	"github.com/go-openapi/runtime"
 	"github.com/go-openapi/runtime/logger"
@@ -76,6 +74,26 @@ type TLSClientOptions struct {
 	// InsecureSkipVerify controls whether the certificate chain and hostname presented
 	// by the server are validated. If false, any certificate is accepted.
 	InsecureSkipVerify bool
+
+	// VerifyPeerCertificate, if not nil, is called after normal
+	// certificate verification. It receives the raw ASN.1 certificates
+	// provided by the peer and also any verified chains that normal processing found.
+	// If it returns a non-nil error, the handshake is aborted and that error results.
+	//
+	// If normal verification fails then the handshake will abort before
+	// considering this callback. If normal verification is disabled by
+	// setting InsecureSkipVerify then this callback will be considered but
+	// the verifiedChains argument will always be nil.
+	VerifyPeerCertificate func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error
+
+	// SessionTicketsDisabled may be set to true to disable session ticket and
+	// PSK (resumption) support. Note that on clients, session ticket support is
+	// also disabled if ClientSessionCache is nil.
+	SessionTicketsDisabled bool
+
+	// ClientSessionCache is a cache of ClientSessionState entries for TLS
+	// session resumption. It is only used by clients.
+	ClientSessionCache tls.ClientSessionCache
 
 	// Prevents callers using unkeyed fields.
 	_ struct{}
@@ -122,6 +140,10 @@ func TLSClientAuth(opts TLSClientOptions) (*tls.Config, error) {
 	}
 
 	cfg.InsecureSkipVerify = opts.InsecureSkipVerify
+
+	cfg.VerifyPeerCertificate = opts.VerifyPeerCertificate
+	cfg.SessionTicketsDisabled = opts.SessionTicketsDisabled
+	cfg.ClientSessionCache = opts.ClientSessionCache
 
 	// When no CA certificate is provided, default to the system cert pool
 	// that way when a request is made to a server known by the system trust store,
@@ -196,7 +218,6 @@ type Runtime struct {
 	clientOnce *sync.Once
 	client     *http.Client
 	schemes    []string
-	do         func(ctx context.Context, client *http.Client, req *http.Request) (*http.Response, error)
 }
 
 // New creates a new default runtime for a swagger api runtime.Client
@@ -210,6 +231,7 @@ func New(host, basePath string, schemes []string) *Runtime {
 		runtime.XMLMime:     runtime.XMLConsumer(),
 		runtime.TextMime:    runtime.TextConsumer(),
 		runtime.HTMLMime:    runtime.TextConsumer(),
+		runtime.CSVMime:     runtime.CSVConsumer(),
 		runtime.DefaultMime: runtime.ByteStreamConsumer(),
 	}
 	rt.Producers = map[string]runtime.Producer{
@@ -217,6 +239,7 @@ func New(host, basePath string, schemes []string) *Runtime {
 		runtime.XMLMime:     runtime.XMLProducer(),
 		runtime.TextMime:    runtime.TextProducer(),
 		runtime.HTMLMime:    runtime.TextProducer(),
+		runtime.CSVMime:     runtime.CSVProducer(),
 		runtime.DefaultMime: runtime.ByteStreamProducer(),
 	}
 	rt.Transport = http.DefaultTransport
@@ -235,7 +258,6 @@ func New(host, basePath string, schemes []string) *Runtime {
 	if len(schemes) > 0 {
 		rt.schemes = schemes
 	}
-	rt.do = ctxhttp.Do
 	return &rt
 }
 
@@ -342,7 +364,7 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 		}
 	}
 
-	if _, ok := r.Producers[cmt]; !ok && cmt != runtime.MultipartFormMime {
+	if _, ok := r.Producers[cmt]; !ok && cmt != runtime.MultipartFormMime && cmt != runtime.URLencodedFormMime {
 		return nil, fmt.Errorf("none of producers: %v registered. try %s", r.Producers, cmt)
 	}
 
@@ -352,6 +374,7 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 	}
 	req.URL.Scheme = r.pickScheme(operation.Schemes)
 	req.URL.Host = r.Host
+	req.Host = r.Host
 
 	r.clientOnce.Do(func() {
 		r.client = &http.Client{
@@ -391,10 +414,8 @@ func (r *Runtime) Submit(operation *runtime.ClientOperation) (interface{}, error
 	if client == nil {
 		client = r.client
 	}
-	if r.do == nil {
-		r.do = ctxhttp.Do
-	}
-	res, err := r.do(ctx, client, req) // make requests, by default follows 10 redirects before failing
+	req = req.WithContext(ctx)
+	res, err := client.Do(req) // make requests, by default follows 10 redirects before failing
 	if err != nil {
 		return nil, err
 	}
